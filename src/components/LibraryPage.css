@@ -39,8 +39,29 @@
   line-height: 1.55;
 }
 
-.library__create {
+.library__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
   margin-top: 1.25rem;
+}
+
+.library__sync {
+  margin: 0.85rem 0 0;
+  font-size: 0.9rem;
+  color: var(--ink-soft);
+}
+
+.library__sync a {
+  color: var(--accent-deep);
+  font-weight: 600;
+}
+
+.library__sync-error {
+  margin: 0.45rem 0 0;
+  color: #8a3b3b;
+  font-weight: 600;
+  font-size: 0.9rem;
 }
 
 .library__empty-panel .btn {

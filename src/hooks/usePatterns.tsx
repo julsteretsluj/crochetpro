@@ -4,6 +4,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react'
@@ -13,25 +14,99 @@ import {
   saveStoredPatterns,
   seedPatterns,
 } from '../data/patterns'
+import {
+  fetchCloudPatterns,
+  upsertCloudPattern,
+  upsertCloudPatterns,
+} from '../lib/patternApi'
 import type { Pattern, PatternDraft } from '../types/pattern'
+import { useAuth } from './useAuth'
 
 type PatternStore = {
   patterns: Pattern[]
   getBySlug: (slug: string) => Pattern | undefined
   published: Pattern[]
-  addPattern: (draft: PatternDraft) => Pattern
+  addPattern: (draft: PatternDraft) => Promise<Pattern>
+  syncing: boolean
+  cloudEnabled: boolean
+  syncError: string | null
+  saveLocalToAccount: () => Promise<number>
 }
 
 const PatternContext = createContext<PatternStore | null>(null)
 
+function mergeById(local: Pattern[], cloud: Pattern[]): Pattern[] {
+  const map = new Map<string, Pattern>()
+  for (const pattern of cloud) map.set(pattern.id, pattern)
+  for (const pattern of local) {
+    if (!map.has(pattern.id)) map.set(pattern.id, pattern)
+  }
+  return [...map.values()]
+}
+
 export function PatternProvider({ children }: { children: ReactNode }) {
+  const { user } = useAuth()
   const [manualPatterns, setManualPatterns] = useState<Pattern[]>(() =>
     loadStoredPatterns(),
   )
+  const [syncing, setSyncing] = useState(false)
+  const [syncError, setSyncError] = useState<string | null>(null)
+  const hydratedUser = useRef<string | null>(null)
 
+  // Always keep a local backup
   useEffect(() => {
     saveStoredPatterns(manualPatterns)
   }, [manualPatterns])
+
+  // Load / merge cloud library when signed in
+  useEffect(() => {
+    if (!user) {
+      hydratedUser.current = null
+      setManualPatterns(loadStoredPatterns())
+      return
+    }
+
+    if (hydratedUser.current === user.id) return
+    hydratedUser.current = user.id
+
+    let cancelled = false
+    setSyncing(true)
+    setSyncError(null)
+
+    ;(async () => {
+      try {
+        const cloud = await fetchCloudPatterns(user.id)
+        if (cancelled) return
+
+        const local = loadStoredPatterns()
+        const merged = mergeById(local, cloud)
+        setManualPatterns(merged)
+
+        const missingOnCloud = local.filter(
+          (pattern) => !cloud.some((item) => item.id === pattern.id),
+        )
+        if (missingOnCloud.length > 0) {
+          await upsertCloudPatterns(
+            user.id,
+            missingOnCloud,
+            cloud.map((pattern) => pattern.slug),
+          )
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setSyncError(
+            error instanceof Error ? error.message : 'Could not sync patterns.',
+          )
+        }
+      } finally {
+        if (!cancelled) setSyncing(false)
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [user])
 
   const patterns = useMemo(
     () => [...seedPatterns, ...manualPatterns],
@@ -48,18 +123,63 @@ export function PatternProvider({ children }: { children: ReactNode }) {
     [patterns],
   )
 
-  const addPattern = useCallback((draft: PatternDraft) => {
-    const next = createPatternFromDraft(
-      draft,
-      [...seedPatterns, ...loadStoredPatterns()].map((p) => p.slug),
-    )
-    setManualPatterns((current) => [...current, next])
-    return next
-  }, [])
+  const addPattern = useCallback(
+    async (draft: PatternDraft) => {
+      const next = createPatternFromDraft(
+        draft,
+        [...seedPatterns, ...manualPatterns].map((p) => p.slug),
+      )
+      setManualPatterns((current) => [...current, next])
+
+      if (user) {
+        try {
+          setSyncError(null)
+          await upsertCloudPattern(user.id, next)
+        } catch (error) {
+          setSyncError(
+            error instanceof Error
+              ? error.message
+              : 'Pattern saved locally, but cloud sync failed.',
+          )
+        }
+      }
+
+      return next
+    },
+    [manualPatterns, user],
+  )
+
+  const saveLocalToAccount = useCallback(async () => {
+    if (!user) throw new Error('Sign in to save patterns to your account.')
+    const local = loadStoredPatterns()
+    if (local.length === 0) return 0
+    await upsertCloudPatterns(user.id, local)
+    const cloud = await fetchCloudPatterns(user.id)
+    setManualPatterns(mergeById(local, cloud))
+    return local.length
+  }, [user])
 
   const value = useMemo(
-    () => ({ patterns, getBySlug, published, addPattern }),
-    [patterns, getBySlug, published, addPattern],
+    () => ({
+      patterns,
+      getBySlug,
+      published,
+      addPattern,
+      syncing,
+      cloudEnabled: Boolean(user),
+      syncError,
+      saveLocalToAccount,
+    }),
+    [
+      patterns,
+      getBySlug,
+      published,
+      addPattern,
+      syncing,
+      user,
+      syncError,
+      saveLocalToAccount,
+    ],
   )
 
   return (

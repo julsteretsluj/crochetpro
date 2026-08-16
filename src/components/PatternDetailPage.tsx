@@ -1,5 +1,6 @@
 import { Link, useParams } from 'react-router-dom'
 import { usePatterns } from '../hooks/usePatterns'
+import { CrochetProgress } from './CrochetProgress'
 import { StitchDiagram } from './StitchDiagram'
 import { YouTubeEmbed } from './YouTubeEmbed'
 import './PatternDetailPage.css'
@@ -55,13 +56,17 @@ export function PatternDetailPage() {
       ) : null}
 
       {pattern.stitchGraph && pattern.stitchGraph.stitches.length > 0 ? (
-        <section>
-          <h2>Stitch diagram</h2>
-          <StitchDiagram
-            graph={pattern.stitchGraph}
-            title={`${pattern.title} stitch diagram`}
-          />
-        </section>
+        <>
+          <section>
+            <h2>Stitch diagram</h2>
+            <StitchDiagram
+              graph={pattern.stitchGraph}
+              title={`${pattern.title} stitch diagram`}
+            />
+          </section>
+
+          <CrochetProgress patternId={pattern.id} graph={pattern.stitchGraph} />
+        </>
       ) : null}
 
       {pattern.materials.length > 0 ? (

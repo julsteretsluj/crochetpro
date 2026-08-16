@@ -37,7 +37,7 @@ export function CreatePatternPage() {
     setDraft((current) => ({ ...current, stitchGraph }))
   }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setError(null)
 
@@ -58,7 +58,7 @@ export function CreatePatternPage() {
       return
     }
 
-    const pattern = addPattern(draft)
+    const pattern = await addPattern(draft)
     navigate(`/library/${pattern.slug}`)
   }
 

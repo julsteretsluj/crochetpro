@@ -4,23 +4,28 @@ import { HomePage } from './components/HomePage'
 import { LibraryPage } from './components/LibraryPage'
 import { PatternDetailPage } from './components/PatternDetailPage'
 import { CreatePatternPage } from './components/CreatePatternPage'
+import { AccountPage } from './components/AccountPage'
+import { AuthProvider } from './hooks/useAuth'
 import { PatternProvider } from './hooks/usePatterns'
 import './App.css'
 
 function App() {
   return (
     <BrowserRouter>
-      <PatternProvider>
-        <div className="app-shell">
-          <SiteHeader />
-          <Routes>
-            <Route path="/" element={<HomePage />} />
-            <Route path="/library" element={<LibraryPage />} />
-            <Route path="/library/new" element={<CreatePatternPage />} />
-            <Route path="/library/:slug" element={<PatternDetailPage />} />
-          </Routes>
-        </div>
-      </PatternProvider>
+      <AuthProvider>
+        <PatternProvider>
+          <div className="app-shell">
+            <SiteHeader />
+            <Routes>
+              <Route path="/" element={<HomePage />} />
+              <Route path="/library" element={<LibraryPage />} />
+              <Route path="/library/new" element={<CreatePatternPage />} />
+              <Route path="/library/:slug" element={<PatternDetailPage />} />
+              <Route path="/account" element={<AccountPage />} />
+            </Routes>
+          </div>
+        </PatternProvider>
+      </AuthProvider>
     </BrowserRouter>
   )
 }

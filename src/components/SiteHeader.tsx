@@ -1,7 +1,10 @@
 import { NavLink } from 'react-router-dom'
+import { useAuth } from '../hooks/useAuth'
 import './SiteHeader.css'
 
 export function SiteHeader() {
+  const { user, loading } = useAuth()
+
   return (
     <header className="site-header">
       <NavLink to="/" className="site-header__brand" end>
@@ -13,6 +16,9 @@ export function SiteHeader() {
         </NavLink>
         <NavLink to="/library/new" className="site-header__link">
           Create pattern
+        </NavLink>
+        <NavLink to="/account" className="site-header__link">
+          {loading ? 'Account' : user ? 'Account' : 'Sign in'}
         </NavLink>
       </nav>
     </header>

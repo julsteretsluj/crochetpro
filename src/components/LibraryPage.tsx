@@ -1,10 +1,12 @@
 import type { CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
+import { useAuth } from '../hooks/useAuth'
 import { usePatterns } from '../hooks/usePatterns'
 import './LibraryPage.css'
 
 export function LibraryPage() {
-  const { published, patterns } = usePatterns()
+  const { user } = useAuth()
+  const { published, patterns, cloudEnabled, syncing, syncError } = usePatterns()
   const awaiting = patterns.filter((p) => p.status === 'awaiting_spec')
 
   return (
@@ -16,9 +18,28 @@ export function LibraryPage() {
           Browse published patterns, or create one by hand with an optional
           YouTube walkthrough.
         </p>
-        <Link to="/library/new" className="btn btn--primary library__create">
-          Create a pattern
-        </Link>
+        <div className="library__actions">
+          <Link to="/library/new" className="btn btn--primary">
+            Create a pattern
+          </Link>
+          {!user ? (
+            <Link to="/account" className="btn btn--ghost">
+              Sign in to sync
+            </Link>
+          ) : null}
+        </div>
+        {cloudEnabled ? (
+          <p className="library__sync">
+            {syncing ? 'Syncing your account…' : 'Synced to your account'}
+          </p>
+        ) : (
+          <p className="library__sync">
+            Guest mode saves on this browser only.{' '}
+            <Link to="/account">Create an account</Link> to keep patterns
+            everywhere.
+          </p>
+        )}
+        {syncError ? <p className="library__sync-error">{syncError}</p> : null}
       </header>
 
       {published.length === 0 && awaiting.length === 0 ? (
