@@ -200,9 +200,26 @@
   stroke-dasharray: 6 4;
 }
 
+.stitch-builder__canvas-wrap.is-dragging {
+  cursor: grabbing;
+}
+
+.stitch-builder__canvas-wrap.is-dragging .stitch-node {
+  cursor: grabbing;
+}
+
 .stitch-node {
-  cursor: pointer;
+  cursor: grab;
   outline: none;
+  touch-action: none;
+}
+
+.stitch-node--dragging {
+  opacity: 0.92;
+}
+
+.stitch-node--dragging .stitch-node__disk {
+  stroke-width: 3;
 }
 
 .stitch-node__disk {

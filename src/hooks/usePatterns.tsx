@@ -13,6 +13,7 @@ import {
   loadStoredPatterns,
   saveStoredPatterns,
   seedPatterns,
+  updatePatternFromDraft,
 } from '../data/patterns'
 import {
   fetchCloudPatterns,
@@ -27,6 +28,7 @@ type PatternStore = {
   getBySlug: (slug: string) => Pattern | undefined
   published: Pattern[]
   addPattern: (draft: PatternDraft) => Promise<Pattern>
+  updatePattern: (id: string, draft: PatternDraft) => Promise<Pattern>
   syncing: boolean
   cloudEnabled: boolean
   syncError: string | null
@@ -149,6 +151,36 @@ export function PatternProvider({ children }: { children: ReactNode }) {
     [manualPatterns, user],
   )
 
+  const updatePattern = useCallback(
+    async (id: string, draft: PatternDraft) => {
+      const existing = manualPatterns.find((pattern) => pattern.id === id)
+      if (!existing) {
+        throw new Error('Pattern not found.')
+      }
+
+      const next = updatePatternFromDraft(existing, draft)
+      setManualPatterns((current) =>
+        current.map((pattern) => (pattern.id === id ? next : pattern)),
+      )
+
+      if (user) {
+        try {
+          setSyncError(null)
+          await upsertCloudPattern(user.id, next)
+        } catch (error) {
+          setSyncError(
+            error instanceof Error
+              ? error.message
+              : 'Edits saved locally, but cloud sync failed.',
+          )
+        }
+      }
+
+      return next
+    },
+    [manualPatterns, user],
+  )
+
   const saveLocalToAccount = useCallback(async () => {
     if (!user) throw new Error('Sign in to save patterns to your account.')
     const local = loadStoredPatterns()
@@ -165,6 +197,7 @@ export function PatternProvider({ children }: { children: ReactNode }) {
       getBySlug,
       published,
       addPattern,
+      updatePattern,
       syncing,
       cloudEnabled: Boolean(user),
       syncError,
@@ -175,6 +208,7 @@ export function PatternProvider({ children }: { children: ReactNode }) {
       getBySlug,
       published,
       addPattern,
+      updatePattern,
       syncing,
       user,
       syncError,

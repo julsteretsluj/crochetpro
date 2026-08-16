@@ -32,6 +32,14 @@ export function PatternDetailPage() {
         </p>
         <h1>{pattern.title}</h1>
         <p className="pattern-detail__summary">{pattern.summary}</p>
+        <div className="pattern-detail__actions">
+          <Link to={`/library/${pattern.slug}/edit`} className="btn btn--primary">
+            Edit pattern
+          </Link>
+          <Link to="/library" className="btn btn--ghost">
+            Library
+          </Link>
+        </div>
         <dl className="pattern-detail__facts">
           {pattern.yarnWeight ? (
             <>

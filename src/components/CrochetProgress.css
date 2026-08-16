@@ -121,6 +121,16 @@
   padding: 0;
   display: grid;
   gap: 0.3rem;
+  counter-reset: none;
+}
+
+.crochet-stitch--next {
+  border-color: var(--line);
+  background: var(--bg);
+}
+
+.crochet-stitch--next .crochet-stitch__body strong {
+  color: var(--accent-2);
 }
 
 .crochet-stitch {

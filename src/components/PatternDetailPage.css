@@ -22,6 +22,13 @@
   margin: 0 0 1rem;
 }
 
+.pattern-detail__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  margin: 0 0 1.25rem;
+}
+
 .pattern-detail__meta {
   margin: 0 0 0.35rem;
   font-size: 0.75rem;

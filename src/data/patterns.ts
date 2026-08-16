@@ -59,6 +59,51 @@ export function createPatternFromDraft(
     slug = `${slug}-${Date.now().toString(36)}`
   }
 
+  return buildPatternFields(draft, {
+    id: crypto.randomUUID(),
+    slug,
+  })
+}
+
+export function updatePatternFromDraft(
+  existing: Pattern,
+  draft: PatternDraft,
+): Pattern {
+  return buildPatternFields(draft, {
+    id: existing.id,
+    slug: existing.slug,
+  })
+}
+
+export function patternToDraft(pattern: Pattern): PatternDraft {
+  return {
+    title: pattern.title,
+    summary: pattern.summary,
+    difficulty: pattern.difficulty,
+    yarnWeight: pattern.yarnWeight ?? '',
+    hookSize: pattern.hookSize ?? '',
+    estimatedTime: pattern.estimatedTime ?? '',
+    tags: pattern.tags.join(', '),
+    materials: pattern.materials.join('\n'),
+    abbreviations: pattern.abbreviations
+      .map((entry) => `${entry.abbr}: ${entry.meaning}`)
+      .join('\n'),
+    instructions: pattern.instructions.join('\n'),
+    notes: pattern.notes ?? '',
+    youtubeUrl: pattern.youtubeUrl ?? '',
+    stitchGraph: pattern.stitchGraph
+      ? {
+          stitches: pattern.stitchGraph.stitches.map((stitch) => ({ ...stitch })),
+          nextLabel: pattern.stitchGraph.nextLabel,
+        }
+      : emptyStitchGraph(),
+  }
+}
+
+function buildPatternFields(
+  draft: PatternDraft,
+  identity: { id: string; slug: string },
+): Pattern {
   const fromGraph = graphToInstructions(draft.stitchGraph)
   const instructions =
     fromGraph.length > 0 ? fromGraph : splitLines(draft.instructions)
@@ -73,8 +118,8 @@ export function createPatternFromDraft(
       : parseAbbreviations(draft.abbreviations)
 
   return {
-    id: crypto.randomUUID(),
-    slug,
+    id: identity.id,
+    slug: identity.slug,
     title: draft.title.trim(),
     summary: draft.summary.trim(),
     difficulty: draft.difficulty,

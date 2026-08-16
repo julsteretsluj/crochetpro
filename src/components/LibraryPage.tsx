@@ -84,9 +84,17 @@ export function LibraryPage() {
                 <Link to={`/library/${pattern.slug}`}>{pattern.title}</Link>
               </h2>
               <p>{pattern.summary}</p>
-              <Link to={`/library/${pattern.slug}`} className="pattern-card__link">
-                Open pattern
-              </Link>
+              <div className="pattern-card__links">
+                <Link to={`/library/${pattern.slug}`} className="pattern-card__link">
+                  Open
+                </Link>
+                <Link
+                  to={`/library/${pattern.slug}/edit`}
+                  className="pattern-card__link"
+                >
+                  Edit
+                </Link>
+              </div>
             </article>
           ))}
         </section>

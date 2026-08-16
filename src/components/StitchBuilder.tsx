@@ -1,12 +1,14 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { centeredViewBox, viewBoxToString } from '../lib/canvasView'
 import {
   canPlaceSlipStitch,
   describePlacement,
   graphToAbbreviationLines,
   graphToInstructions,
+  moveStitches,
   placeStitches,
   removeStitches,
+  setStitchPositions,
 } from '../lib/stitchGraph'
 import {
   STITCH_PALETTE,
@@ -22,10 +24,35 @@ type StitchBuilderProps = {
   onChange: (graph: StitchGraph) => void
 }
 
+type DragState = {
+  pointerId: number
+  ids: string[]
+  origins: Record<string, { x: number; y: number }>
+  start: { x: number; y: number }
+  moved: boolean
+}
+
+function clientToSvg(
+  svg: SVGSVGElement,
+  clientX: number,
+  clientY: number,
+): { x: number; y: number } {
+  const point = svg.createSVGPoint()
+  point.x = clientX
+  point.y = clientY
+  const ctm = svg.getScreenCTM()
+  if (!ctm) return { x: 0, y: 0 }
+  const mapped = point.matrixTransform(ctm.inverse())
+  return { x: mapped.x, y: mapped.y }
+}
+
 export function StitchBuilder({ value, onChange }: StitchBuilderProps) {
   const [kind, setKind] = useState<StitchKind>('slknot')
   const [count, setCount] = useState(1)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const [drag, setDrag] = useState<DragState | null>(null)
+  const svgRef = useRef<SVGSVGElement | null>(null)
+  const frozenViewBox = useRef<string | null>(null)
 
   const starters = useMemo(
     () => STITCH_PALETTE.filter((item) => item.starter),
@@ -36,7 +63,7 @@ export function StitchBuilder({ value, onChange }: StitchBuilderProps) {
     [],
   )
 
-  const viewBox = useMemo(
+  const liveViewBox = useMemo(
     () =>
       viewBoxToString(
         centeredViewBox(value.stitches, selectedIds, {
@@ -47,6 +74,8 @@ export function StitchBuilder({ value, onChange }: StitchBuilderProps) {
       ),
     [value.stitches, selectedIds],
   )
+
+  const viewBox = drag && frozenViewBox.current ? frozenViewBox.current : liveViewBox
 
   const byId = useMemo(
     () => new Map(value.stitches.map((stitch) => [stitch.id, stitch])),
@@ -63,6 +92,92 @@ export function StitchBuilder({ value, onChange }: StitchBuilderProps) {
   const liveInstructions = graphToInstructions(value)
   const canvasEmpty = value.stitches.length === 0
   const placeDisabled = kind === 'slst' ? !canPlaceSlipStitch(selectedIds) : false
+
+  useEffect(() => {
+    if (!drag) return
+    const active = drag
+
+    function onPointerMove(event: PointerEvent) {
+      const svg = svgRef.current
+      if (!svg || event.pointerId !== active.pointerId) return
+      const point = clientToSvg(svg, event.clientX, event.clientY)
+      const dx = point.x - active.start.x
+      const dy = point.y - active.start.y
+      const distance = Math.hypot(dx, dy)
+
+      if (!active.moved && distance < 5) return
+
+      if (!active.moved) {
+        setDrag((current) => (current ? { ...current, moved: true } : current))
+      }
+
+      const positions: Record<string, { x: number; y: number }> = {}
+      for (const id of active.ids) {
+        const origin = active.origins[id]
+        if (!origin) continue
+        positions[id] = { x: origin.x + dx, y: origin.y + dy }
+      }
+      onChange(setStitchPositions(value, positions))
+    }
+
+    function onPointerUp(event: PointerEvent) {
+      if (event.pointerId !== active.pointerId) return
+      const wasClick = !active.moved
+      const primaryId = active.ids[0]
+      setDrag(null)
+      frozenViewBox.current = null
+
+      if (wasClick && primaryId) {
+        if (kind === 'slst') {
+          setSelectedIds((current) => {
+            if (current[0] === primaryId) return current.slice(1)
+            if (current[1] === primaryId) return [current[0]]
+            if (current.length === 0) return [primaryId]
+            if (current.length === 1) return [current[0], primaryId]
+            return [current[0], primaryId]
+          })
+        } else {
+          setSelectedIds((current) =>
+            current.includes(primaryId)
+              ? current.filter((item) => item !== primaryId)
+              : [...current, primaryId],
+          )
+        }
+      }
+    }
+
+    window.addEventListener('pointermove', onPointerMove)
+    window.addEventListener('pointerup', onPointerUp)
+    window.addEventListener('pointercancel', onPointerUp)
+    return () => {
+      window.removeEventListener('pointermove', onPointerMove)
+      window.removeEventListener('pointerup', onPointerUp)
+      window.removeEventListener('pointercancel', onPointerUp)
+    }
+  }, [drag, kind, onChange, value])
+
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      const target = event.target as HTMLElement | null
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) {
+        return
+      }
+      if (selectedIds.length === 0) return
+      const step = event.shiftKey ? 16 : 8
+      let dx = 0
+      let dy = 0
+      if (event.key === 'ArrowLeft') dx = -step
+      if (event.key === 'ArrowRight') dx = step
+      if (event.key === 'ArrowUp') dy = -step
+      if (event.key === 'ArrowDown') dy = step
+      if (dx === 0 && dy === 0) return
+      event.preventDefault()
+      onChange(moveStitches(value, selectedIds, dx, dy))
+    }
+
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [onChange, selectedIds, value])
 
   function selectKind(next: StitchKind) {
     setKind(next)
@@ -124,6 +239,38 @@ export function StitchBuilder({ value, onChange }: StitchBuilderProps) {
     setCount(1)
   }
 
+  function beginDrag(
+    event: ReactPointerEvent<SVGGElement>,
+    stitchId: string,
+  ) {
+    if (event.button !== 0) return
+    const svg = svgRef.current
+    if (!svg) return
+
+    event.preventDefault()
+    event.stopPropagation()
+
+    const ids =
+      selectedIds.includes(stitchId) && kind !== 'slst'
+        ? selectedIds
+        : [stitchId]
+
+    const origins: Record<string, { x: number; y: number }> = {}
+    for (const id of ids) {
+      const stitch = byId.get(id)
+      if (stitch) origins[id] = { x: stitch.x, y: stitch.y }
+    }
+
+    frozenViewBox.current = liveViewBox
+    setDrag({
+      pointerId: event.pointerId,
+      ids,
+      origins,
+      start: clientToSvg(svg, event.clientX, event.clientY),
+      moved: false,
+    })
+  }
+
   function renderChip(item: (typeof STITCH_PALETTE)[number]) {
     return (
       <button
@@ -159,8 +306,8 @@ export function StitchBuilder({ value, onChange }: StitchBuilderProps) {
       <div className="stitch-builder__intro">
         <h2>Build with stitches</h2>
         <p>
-          Start with a slip knot, magic ring, or chain. Slip stitches need a
-          start and an end stitch.
+          Drag stitches to rearrange. Slip stitches need a start and an end.
+          Arrow keys nudge a selection.
         </p>
       </div>
 
@@ -251,20 +398,27 @@ export function StitchBuilder({ value, onChange }: StitchBuilderProps) {
         </div>
       </div>
 
-      <div className="stitch-builder__canvas-wrap">
+      <div
+        className={
+          drag?.moved
+            ? 'stitch-builder__canvas-wrap is-dragging'
+            : 'stitch-builder__canvas-wrap'
+        }
+      >
         {canvasEmpty ? (
           <p className="stitch-builder__empty">
             Empty canvas — start with a slip knot, magic ring, or chain.
           </p>
         ) : null}
         <svg
+          ref={svgRef}
           className="stitch-builder__canvas"
           viewBox={viewBox}
           width="100%"
           height="300"
           preserveAspectRatio="xMidYMid meet"
           role="img"
-          aria-label="Stitch canvas. Click stitches to select connection targets."
+          aria-label="Stitch canvas. Drag to rearrange. Click to select."
         >
           {value.stitches.flatMap((stitch) =>
             stitch.connectedTo.map((targetId) => {
@@ -297,6 +451,7 @@ export function StitchBuilder({ value, onChange }: StitchBuilderProps) {
             const selected = selectedIds.includes(stitch.id)
             const role = roleForStitch(stitch.id)
             const item = STITCH_PALETTE.find((p) => p.kind === stitch.kind)
+            const dragging = drag?.ids.includes(stitch.id) && drag.moved
             return (
               <g
                 key={stitch.id}
@@ -305,17 +460,18 @@ export function StitchBuilder({ value, onChange }: StitchBuilderProps) {
                   selected ? 'stitch-node--selected' : '',
                   role === 'start' ? 'stitch-node--start' : '',
                   role === 'end' ? 'stitch-node--end' : '',
+                  dragging ? 'stitch-node--dragging' : '',
                 ]
                   .filter(Boolean)
                   .join(' ')}
                 transform={`translate(${stitch.x} ${stitch.y})`}
-                onClick={() => toggleSelect(stitch.id)}
+                onPointerDown={(event) => beginDrag(event, stitch.id)}
                 role="button"
                 tabIndex={0}
                 aria-pressed={selected}
                 aria-label={`${stitchAbbr(stitch.kind)} ${stitch.label}${
                   role ? `, ${role}` : ''
-                }`}
+                }. Drag to move.`}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault()

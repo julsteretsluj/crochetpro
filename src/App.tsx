@@ -20,6 +20,7 @@ function App() {
               <Route path="/" element={<HomePage />} />
               <Route path="/library" element={<LibraryPage />} />
               <Route path="/library/new" element={<CreatePatternPage />} />
+              <Route path="/library/:slug/edit" element={<CreatePatternPage />} />
               <Route path="/library/:slug" element={<PatternDetailPage />} />
               <Route path="/account" element={<AccountPage />} />
             </Routes>

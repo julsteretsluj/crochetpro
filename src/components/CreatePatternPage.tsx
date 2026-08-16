@@ -1,10 +1,10 @@
-import { useMemo, useState, type FormEvent } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import { emptyDraft } from '../data/patterns'
+import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { Link, useNavigate, useParams } from 'react-router-dom'
+import { emptyDraft, patternToDraft } from '../data/patterns'
 import { usePatterns } from '../hooks/usePatterns'
 import { getYouTubeEmbedUrl } from '../lib/youtube'
 import type { PatternDifficulty, PatternDraft } from '../types/pattern'
-import type { StitchGraph } from '../types/stitch'
+import { emptyStitchGraph, type StitchGraph } from '../types/stitch'
 import { StitchBuilder } from './StitchBuilder'
 import { YouTubeEmbed } from './YouTubeEmbed'
 import './CreatePatternPage.css'
@@ -16,11 +16,40 @@ const difficulties: PatternDifficulty[] = [
   'advanced',
 ]
 
+function freshDraft(): PatternDraft {
+  return {
+    ...emptyDraft,
+    stitchGraph: emptyStitchGraph(),
+  }
+}
+
 export function CreatePatternPage() {
   const navigate = useNavigate()
-  const { addPattern } = usePatterns()
-  const [draft, setDraft] = useState<PatternDraft>(emptyDraft)
+  const { slug } = useParams()
+  const { addPattern, updatePattern, getBySlug } = usePatterns()
+  const existing = slug ? getBySlug(slug) : undefined
+  const isEditing = Boolean(slug)
+
+  const [draft, setDraft] = useState<PatternDraft>(freshDraft)
+  const [hydratedSlug, setHydratedSlug] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    if (!slug) {
+      setDraft(freshDraft())
+      setHydratedSlug(null)
+      return
+    }
+
+    if (hydratedSlug === slug) return
+
+    const pattern = getBySlug(slug)
+    if (pattern) {
+      setDraft(patternToDraft(pattern))
+      setHydratedSlug(slug)
+    }
+  }, [slug, getBySlug, hydratedSlug])
 
   const hasStitchGraph = draft.stitchGraph.stitches.length > 0
 
@@ -58,18 +87,46 @@ export function CreatePatternPage() {
       return
     }
 
-    const pattern = await addPattern(draft)
-    navigate(`/library/${pattern.slug}`)
+    setSaving(true)
+    try {
+      const pattern =
+        isEditing && existing
+          ? await updatePattern(existing.id, draft)
+          : await addPattern(draft)
+      navigate(`/library/${pattern.slug}`)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not save pattern.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (isEditing && !existing) {
+    return (
+      <main className="create-pattern">
+        <header className="create-pattern__header">
+          <p className="create-pattern__eyebrow">Edit pattern</p>
+          <h1>Pattern not found</h1>
+          <p>That pattern isn’t in your library.</p>
+          <Link to="/library" className="btn btn--ghost">
+            Back to library
+          </Link>
+        </header>
+      </main>
+    )
   }
 
   return (
     <main className="create-pattern">
       <header className="create-pattern__header">
-        <p className="create-pattern__eyebrow">Manual creation</p>
-        <h1>Add a crochet pattern</h1>
+        <p className="create-pattern__eyebrow">
+          {isEditing ? 'Edit pattern' : 'Manual creation'}
+        </p>
+        <h1>{isEditing ? 'Edit crochet pattern' : 'Add a crochet pattern'}</h1>
         <p>
-          Click a stitch type, set a number, select stitches to connect into,
-          then place. You can still add materials and a YouTube walkthrough.
+          {isEditing
+            ? 'Update stitches, materials, or the YouTube walkthrough, then save.'
+            : 'Click a stitch type, set a number, select stitches to connect into, then place. You can still add materials and a YouTube walkthrough.'}
         </p>
       </header>
 
@@ -239,10 +296,17 @@ export function CreatePatternPage() {
         {error ? <p className="create-pattern__error">{error}</p> : null}
 
         <div className="create-pattern__actions">
-          <button type="submit" className="btn btn--primary">
-            Save pattern to library
+          <button type="submit" className="btn btn--primary" disabled={saving}>
+            {saving
+              ? 'Saving…'
+              : isEditing
+                ? 'Save changes'
+                : 'Save pattern to library'}
           </button>
-          <Link to="/library" className="btn btn--ghost">
+          <Link
+            to={isEditing && existing ? `/library/${existing.slug}` : '/library'}
+            className="btn btn--ghost"
+          >
             Cancel
           </Link>
         </div>

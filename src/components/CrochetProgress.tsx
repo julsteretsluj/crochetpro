@@ -4,6 +4,7 @@ import { useAuth } from '../hooks/useAuth'
 import {
   groupStitchesIntoRows,
   loadProgress,
+  nextStepInRow,
   saveProgress,
 } from '../lib/crochetProgress'
 import { fetchCloudProgress, saveCloudProgress } from '../lib/patternApi'
@@ -128,7 +129,8 @@ export function CrochetProgress({ patternId, graph }: CrochetProgressProps) {
         <div>
           <h2>Crochet row by row</h2>
           <p>
-            Work one row at a time and tick each stitch as you finish it.
+            Work one row at a time. Within each row, steps run in number order
+            — tick the lowest open step next.
             {user
               ? ' Progress syncs to your account.'
               : ' '}
@@ -164,6 +166,13 @@ export function CrochetProgress({ patternId, graph }: CrochetProgressProps) {
           const rowDone = row.stitches.every((stitch) => completed.has(stitch.id))
           const isActive = index === activeRowIndex && !rowDone
           const isUpcoming = index > activeRowIndex
+          const nextStep = isActive ? nextStepInRow(row, completed) : undefined
+          const firstStep = row.stitches[0]?.label
+          const lastStep = row.stitches[row.stitches.length - 1]?.label
+          const stepRange =
+            firstStep === lastStep
+              ? `step ${firstStep}`
+              : `steps ${firstStep}–${lastStep}`
 
           return (
             <article
@@ -186,7 +195,8 @@ export function CrochetProgress({ patternId, graph }: CrochetProgressProps) {
                   </p>
                   <p className="crochet-row__count">
                     {row.stitches.length} stitch
-                    {row.stitches.length === 1 ? '' : 'es'}
+                    {row.stitches.length === 1 ? '' : 'es'} · {stepRange}
+                    {nextStep ? ` · next #${nextStep.label}` : ''}
                   </p>
                 </div>
                 <button
@@ -203,9 +213,10 @@ export function CrochetProgress({ patternId, graph }: CrochetProgressProps) {
                 </button>
               </header>
 
-              <ul className="crochet-row__stitches">
-                {row.stitches.map((stitch) => {
+              <ol className="crochet-row__stitches">
+                {row.stitches.map((stitch, stepIndex) => {
                   const checked = completed.has(stitch.id)
+                  const isNext = nextStep?.id === stitch.id
                   const targets =
                     stitch.connectedTo.length > 0
                       ? stitch.connectedTo
@@ -217,13 +228,15 @@ export function CrochetProgress({ patternId, graph }: CrochetProgressProps) {
                       : []
 
                   return (
-                    <li key={stitch.id}>
+                    <li key={stitch.id} value={stitch.label}>
                       <label
-                        className={
-                          checked
-                            ? 'crochet-stitch crochet-stitch--done'
-                            : 'crochet-stitch'
-                        }
+                        className={[
+                          'crochet-stitch',
+                          checked ? 'crochet-stitch--done' : '',
+                          isNext ? 'crochet-stitch--next' : '',
+                        ]
+                          .filter(Boolean)
+                          .join(' ')}
                       >
                         <input
                           type="checkbox"
@@ -233,7 +246,9 @@ export function CrochetProgress({ patternId, graph }: CrochetProgressProps) {
                         <span className="crochet-stitch__mark" aria-hidden="true" />
                         <span className="crochet-stitch__body">
                           <strong>
-                            #{stitch.label} {stitchAbbr(stitch.kind)}
+                            Step {stepIndex + 1} · #{stitch.label}{' '}
+                            {stitchAbbr(stitch.kind)}
+                            {isNext ? ' · next' : ''}
                           </strong>
                           <em>{stitchName(stitch.kind)}</em>
                           {targets.length > 0 ? (
@@ -246,7 +261,7 @@ export function CrochetProgress({ patternId, graph }: CrochetProgressProps) {
                     </li>
                   )
                 })}
-              </ul>
+              </ol>
             </article>
           )
         })}

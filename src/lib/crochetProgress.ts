@@ -7,17 +7,18 @@ export type StitchRow = {
   stitches: StitchNode[]
 }
 
-/** Group stitches into crochet rows by vertical band, left-to-right within each row. */
+/** Group stitches into crochet rows by vertical band; steps ordered by number within each row. */
 export function groupStitchesIntoRows(graph: StitchGraph): StitchRow[] {
   if (graph.stitches.length === 0) return []
 
-  const sorted = [...graph.stitches].sort((a, b) => {
+  // Place stitches into rows by Y band first (layout), then sort each row by step number.
+  const byY = [...graph.stitches].sort((a, b) => {
     if (Math.abs(a.y - b.y) > 20) return a.y - b.y
-    return a.x - b.x || a.label - b.label
+    return a.label - b.label || a.x - b.x
   })
 
   const rows: StitchRow[] = []
-  for (const stitch of sorted) {
+  for (const stitch of byY) {
     const current = rows[rows.length - 1]
     if (!current || Math.abs(current.y - stitch.y) > 20) {
       rows.push({
@@ -33,8 +34,18 @@ export function groupStitchesIntoRows(graph: StitchGraph): StitchRow[] {
 
   return rows.map((row) => ({
     ...row,
-    stitches: [...row.stitches].sort((a, b) => a.x - b.x || a.label - b.label),
+    stitches: [...row.stitches].sort(
+      (a, b) => a.label - b.label || a.x - b.x,
+    ),
   }))
+}
+
+/** Next incomplete stitch in a row, preferring the lowest step number. */
+export function nextStepInRow(
+  row: StitchRow,
+  completed: Set<string>,
+): StitchNode | undefined {
+  return row.stitches.find((stitch) => !completed.has(stitch.id))
 }
 
 export function progressStorageKey(patternId: string): string {

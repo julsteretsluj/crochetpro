@@ -1,5 +1,6 @@
 import type { StitchGraph, StitchKind, StitchNode } from '../types/stitch'
 import { stitchAbbr } from '../types/stitch'
+import { groupStitchesIntoRows } from './crochetProgress'
 
 const COL_GAP = 56
 const ROW_GAP = 64
@@ -167,6 +168,41 @@ export function removeStitches(graph: StitchGraph, ids: string[]): StitchGraph {
   }
 }
 
+/** Move one or more stitches by a delta in canvas space. */
+export function moveStitches(
+  graph: StitchGraph,
+  ids: string[],
+  dx: number,
+  dy: number,
+): StitchGraph {
+  if (ids.length === 0 || (dx === 0 && dy === 0)) return graph
+  const moving = new Set(ids)
+  return {
+    ...graph,
+    stitches: graph.stitches.map((stitch) =>
+      moving.has(stitch.id)
+        ? { ...stitch, x: stitch.x + dx, y: stitch.y + dy }
+        : stitch,
+    ),
+  }
+}
+
+/** Set absolute positions for stitches (used while dragging). */
+export function setStitchPositions(
+  graph: StitchGraph,
+  positions: Record<string, { x: number; y: number }>,
+): StitchGraph {
+  const ids = Object.keys(positions)
+  if (ids.length === 0) return graph
+  return {
+    ...graph,
+    stitches: graph.stitches.map((stitch) => {
+      const next = positions[stitch.id]
+      return next ? { ...stitch, x: next.x, y: next.y } : stitch
+    }),
+  }
+}
+
 export function describePlacement(
   kind: StitchKind,
   count: number,
@@ -227,43 +263,49 @@ export function graphToInstructions(graph: StitchGraph): string[] {
 
   const byId = new Map(graph.stitches.map((s) => [s.id, s]))
   const lines: string[] = []
+  // Walk in row order, and by step number within each row
+  const ordered = groupStitchesIntoRows(graph).flatMap((row) => row.stitches)
 
-  // Group consecutive same-kind stitches that share the same connection signature
   let i = 0
-  while (i < graph.stitches.length) {
-    const start = graph.stitches[i]
+  while (i < ordered.length) {
+    const start = ordered[i]
     const sig = connectionSignature(start, byId)
     let j = i + 1
-    while (j < graph.stitches.length) {
-      const next = graph.stitches[j]
+    while (j < ordered.length) {
+      const next = ordered[j]
       if (next.kind !== start.kind) break
       if (connectionSignature(next, byId) !== sig) break
-      // foundation run: each connects only to previous in group
-      if (sig === 'sequence' && next.connectedTo[0] !== graph.stitches[j - 1].id) break
+      if (sig === 'sequence' && next.connectedTo[0] !== ordered[j - 1].id) break
       j += 1
     }
 
     const count = j - i
     const abbr = stitchAbbr(start.kind)
+    const stepStart = start.label
+    const stepEnd = ordered[j - 1].label
+    const stepTag =
+      stepStart === stepEnd ? `#${stepStart}` : `#${stepStart}–${stepEnd}`
     const targets = start.connectedTo
       .map((id) => byId.get(id)?.label)
       .filter((n): n is number => typeof n === 'number')
 
     if (targets.length === 0) {
-      lines.push(`${count} ${abbr}`)
+      lines.push(`${stepTag}: ${count} ${abbr}`)
     } else if (sig === 'sequence') {
-      lines.push(`${count} ${abbr}, joined in sequence`)
+      lines.push(`${stepTag}: ${count} ${abbr}, joined in sequence`)
     } else if (start.kind === 'slst' && targets.length === 2) {
-      lines.push(`sl st from stitch ${targets[0]} to stitch ${targets[1]}`)
+      lines.push(
+        `${stepTag}: sl st from stitch ${targets[0]} to stitch ${targets[1]}`,
+      )
     } else if (targets.length === 1) {
       lines.push(
         count === 1
-          ? `${abbr} into stitch ${targets[0]}`
-          : `${count} ${abbr} into stitch ${targets[0]}`,
+          ? `${stepTag}: ${abbr} into stitch ${targets[0]}`
+          : `${stepTag}: ${count} ${abbr} into stitch ${targets[0]}`,
       )
     } else {
       lines.push(
-        `${count} ${abbr} into stitches ${targets.join(', ')}`,
+        `${stepTag}: ${count} ${abbr} into stitches ${targets.join(', ')}`,
       )
     }
 
