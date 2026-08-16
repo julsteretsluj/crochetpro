@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { centeredViewBox, viewBoxToString } from '../lib/canvasView'
 import { STITCH_PALETTE, stitchAbbr, type StitchGraph } from '../types/stitch'
 import './StitchDiagram.css'
 
@@ -8,17 +9,17 @@ type StitchDiagramProps = {
 }
 
 export function StitchDiagram({ graph, title = 'Stitch diagram' }: StitchDiagramProps) {
-  const bounds = useMemo(() => {
-    if (graph.stitches.length === 0) {
-      return { width: 480, height: 200 }
-    }
-    const maxX = Math.max(...graph.stitches.map((s) => s.x))
-    const maxY = Math.max(...graph.stitches.map((s) => s.y))
-    return {
-      width: Math.max(480, maxX + 72),
-      height: Math.max(200, maxY + 72),
-    }
-  }, [graph.stitches])
+  const viewBox = useMemo(
+    () =>
+      viewBoxToString(
+        centeredViewBox(graph.stitches, [], {
+          minWidth: 480,
+          minHeight: 220,
+          padding: 64,
+        }),
+      ),
+    [graph.stitches],
+  )
 
   const byId = useMemo(
     () => new Map(graph.stitches.map((stitch) => [stitch.id, stitch])),
@@ -30,8 +31,10 @@ export function StitchDiagram({ graph, title = 'Stitch diagram' }: StitchDiagram
   return (
     <div className="stitch-diagram">
       <svg
-        viewBox={`0 0 ${bounds.width} ${bounds.height}`}
+        viewBox={viewBox}
         width="100%"
+        height="260"
+        preserveAspectRatio="xMidYMid meet"
         role="img"
         aria-label={title}
       >

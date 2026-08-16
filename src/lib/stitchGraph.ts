@@ -65,6 +65,11 @@ export function placeStitches(
   count: number,
   selectedIds: string[],
 ): StitchGraph {
+  // Slip stitch joins a start stitch to an end stitch
+  if (kind === 'slst') {
+    return placeSlipStitch(graph, selectedIds)
+  }
+
   // Slip knot is a single starting loop
   const requested = kind === 'slknot' ? 1 : count
   const safeCount = Math.max(1, Math.min(48, Math.floor(requested)))
@@ -120,6 +125,35 @@ export function placeStitches(
   }
 }
 
+export function canPlaceSlipStitch(selectedIds: string[]): boolean {
+  return selectedIds.length === 2 && selectedIds[0] !== selectedIds[1]
+}
+
+function placeSlipStitch(graph: StitchGraph, selectedIds: string[]): StitchGraph {
+  if (!canPlaceSlipStitch(selectedIds)) {
+    return graph
+  }
+
+  const [startId, endId] = selectedIds
+  const start = graph.stitches.find((s) => s.id === startId)
+  const end = graph.stitches.find((s) => s.id === endId)
+  if (!start || !end) return graph
+
+  const node: StitchNode = {
+    id: crypto.randomUUID(),
+    kind: 'slst',
+    connectedTo: [startId, endId],
+    x: (start.x + end.x) / 2,
+    y: (start.y + end.y) / 2 + ROW_GAP * 0.35,
+    label: graph.nextLabel,
+  }
+
+  return {
+    stitches: [...graph.stitches, node],
+    nextLabel: graph.nextLabel + 1,
+  }
+}
+
 export function removeStitches(graph: StitchGraph, ids: string[]): StitchGraph {
   const remove = new Set(ids)
   return {
@@ -137,6 +171,7 @@ export function describePlacement(
   kind: StitchKind,
   count: number,
   selectedCount: number,
+  selectedLabels?: { start?: number; end?: number },
 ): string {
   const abbr = stitchAbbr(kind)
 
@@ -145,6 +180,23 @@ export function describePlacement(
       return 'Place a slip knot to start'
     }
     return `Place ${count} slip knot${count === 1 ? '' : 's'}`
+  }
+
+  if (kind === 'slst') {
+    if (selectedCount === 0) {
+      return 'Select a start stitch, then an end stitch'
+    }
+    if (selectedCount === 1) {
+      return selectedLabels?.start
+        ? `Start #${selectedLabels.start} — now select the end stitch`
+        : 'Start selected — now select the end stitch'
+    }
+    if (selectedCount >= 2) {
+      if (selectedLabels?.start && selectedLabels?.end) {
+        return `Slip stitch from #${selectedLabels.start} to #${selectedLabels.end}`
+      }
+      return 'Slip stitch from start to end'
+    }
   }
 
   if (kind === 'mr' && selectedCount === 0) {
@@ -201,6 +253,8 @@ export function graphToInstructions(graph: StitchGraph): string[] {
       lines.push(`${count} ${abbr}`)
     } else if (sig === 'sequence') {
       lines.push(`${count} ${abbr}, joined in sequence`)
+    } else if (start.kind === 'slst' && targets.length === 2) {
+      lines.push(`sl st from stitch ${targets[0]} to stitch ${targets[1]}`)
     } else if (targets.length === 1) {
       lines.push(
         count === 1

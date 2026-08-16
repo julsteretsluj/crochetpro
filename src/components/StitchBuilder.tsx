@@ -1,5 +1,7 @@
 import { useMemo, useState } from 'react'
+import { centeredViewBox, viewBoxToString } from '../lib/canvasView'
 import {
+  canPlaceSlipStitch,
   describePlacement,
   graphToAbbreviationLines,
   graphToInstructions,
@@ -34,34 +36,52 @@ export function StitchBuilder({ value, onChange }: StitchBuilderProps) {
     [],
   )
 
-  const bounds = useMemo(() => {
-    if (value.stitches.length === 0) {
-      return { width: 640, height: 280 }
-    }
-    const maxX = Math.max(...value.stitches.map((s) => s.x))
-    const maxY = Math.max(...value.stitches.map((s) => s.y))
-    return {
-      width: Math.max(640, maxX + 72),
-      height: Math.max(280, maxY + 72),
-    }
-  }, [value.stitches])
+  const viewBox = useMemo(
+    () =>
+      viewBoxToString(
+        centeredViewBox(value.stitches, selectedIds, {
+          minWidth: 560,
+          minHeight: 300,
+          padding: 72,
+        }),
+      ),
+    [value.stitches, selectedIds],
+  )
 
   const byId = useMemo(
     () => new Map(value.stitches.map((stitch) => [stitch.id, stitch])),
     [value.stitches],
   )
 
-  const placeCount = kind === 'slknot' ? 1 : count
-  const preview = describePlacement(kind, placeCount, selectedIds.length)
+  const placeCount = kind === 'slknot' || kind === 'slst' ? 1 : count
+  const slstStart = kind === 'slst' ? selectedIds[0] : undefined
+  const slstEnd = kind === 'slst' ? selectedIds[1] : undefined
+  const preview = describePlacement(kind, placeCount, selectedIds.length, {
+    start: slstStart ? byId.get(slstStart)?.label : undefined,
+    end: slstEnd ? byId.get(slstEnd)?.label : undefined,
+  })
   const liveInstructions = graphToInstructions(value)
   const canvasEmpty = value.stitches.length === 0
+  const placeDisabled = kind === 'slst' ? !canPlaceSlipStitch(selectedIds) : false
 
   function selectKind(next: StitchKind) {
     setKind(next)
-    if (next === 'slknot') setCount(1)
+    if (next === 'slknot' || next === 'slst') setCount(1)
+    if (next === 'slst') setSelectedIds([])
   }
 
   function toggleSelect(id: string) {
+    if (kind === 'slst') {
+      setSelectedIds((current) => {
+        if (current[0] === id) return current.slice(1)
+        if (current[1] === id) return [current[0]]
+        if (current.length === 0) return [id]
+        if (current.length === 1) return [current[0], id]
+        return [current[0], id]
+      })
+      return
+    }
+
     setSelectedIds((current) =>
       current.includes(id)
         ? current.filter((item) => item !== id)
@@ -70,8 +90,17 @@ export function StitchBuilder({ value, onChange }: StitchBuilderProps) {
   }
 
   function handlePlace() {
+    if (kind === 'slst' && !canPlaceSlipStitch(selectedIds)) return
+
     const next = placeStitches(value, kind, placeCount, selectedIds)
     onChange(next)
+
+    if (kind === 'slst') {
+      const added = next.stitches[next.stitches.length - 1]
+      setSelectedIds(added ? [added.id] : [])
+      return
+    }
+
     if (selectedIds.length === 0) {
       const added = next.stitches.slice(value.stitches.length)
       setSelectedIds(added.map((s) => s.id))
@@ -118,13 +147,20 @@ export function StitchBuilder({ value, onChange }: StitchBuilderProps) {
     )
   }
 
+  function roleForStitch(id: string): 'start' | 'end' | null {
+    if (kind !== 'slst') return null
+    if (id === slstStart) return 'start'
+    if (id === slstEnd) return 'end'
+    return null
+  }
+
   return (
     <section className="stitch-builder" aria-label="Stitch builder">
       <div className="stitch-builder__intro">
         <h2>Build with stitches</h2>
         <p>
-          Start with a slip knot, magic ring, or chain. Then place stitches and
-          connect them to your selection.
+          Start with a slip knot, magic ring, or chain. Slip stitches need a
+          start and an end stitch.
         </p>
       </div>
 
@@ -158,16 +194,35 @@ export function StitchBuilder({ value, onChange }: StitchBuilderProps) {
             min={1}
             max={48}
             value={placeCount}
-            disabled={kind === 'slknot'}
+            disabled={kind === 'slknot' || kind === 'slst'}
             onChange={(e) => setCount(Number(e.target.value) || 1)}
           />
         </label>
 
+        {kind === 'slst' ? (
+          <div className="stitch-builder__endpoints" aria-live="polite">
+            <span className={slstStart ? 'is-set' : ''}>
+              Start {slstStart ? `#${byId.get(slstStart)?.label}` : '—'}
+            </span>
+            <span aria-hidden="true">→</span>
+            <span className={slstEnd ? 'is-set' : ''}>
+              End {slstEnd ? `#${byId.get(slstEnd)?.label}` : '—'}
+            </span>
+          </div>
+        ) : null}
+
         <p className="stitch-builder__preview">{preview}</p>
 
         <div className="stitch-builder__actions">
-          <button type="button" className="btn btn--primary" onClick={handlePlace}>
-            Place {placeCount} {stitchAbbr(kind)}
+          <button
+            type="button"
+            className="btn btn--primary"
+            onClick={handlePlace}
+            disabled={placeDisabled}
+          >
+            {kind === 'slst'
+              ? 'Place slip stitch'
+              : `Place ${placeCount} ${stitchAbbr(kind)}`}
           </button>
           <button
             type="button"
@@ -204,8 +259,10 @@ export function StitchBuilder({ value, onChange }: StitchBuilderProps) {
         ) : null}
         <svg
           className="stitch-builder__canvas"
-          viewBox={`0 0 ${bounds.width} ${bounds.height}`}
+          viewBox={viewBox}
           width="100%"
+          height="300"
+          preserveAspectRatio="xMidYMid meet"
           role="img"
           aria-label="Stitch canvas. Click stitches to select connection targets."
         >
@@ -226,23 +283,39 @@ export function StitchBuilder({ value, onChange }: StitchBuilderProps) {
             }),
           )}
 
+          {kind === 'slst' && slstStart && slstEnd ? (
+            <line
+              className="stitch-builder__link stitch-builder__link--preview"
+              x1={byId.get(slstStart)?.x ?? 0}
+              y1={byId.get(slstStart)?.y ?? 0}
+              x2={byId.get(slstEnd)?.x ?? 0}
+              y2={byId.get(slstEnd)?.y ?? 0}
+            />
+          ) : null}
+
           {value.stitches.map((stitch) => {
             const selected = selectedIds.includes(stitch.id)
+            const role = roleForStitch(stitch.id)
             const item = STITCH_PALETTE.find((p) => p.kind === stitch.kind)
             return (
               <g
                 key={stitch.id}
-                className={
-                  selected
-                    ? 'stitch-node stitch-node--selected'
-                    : 'stitch-node'
-                }
+                className={[
+                  'stitch-node',
+                  selected ? 'stitch-node--selected' : '',
+                  role === 'start' ? 'stitch-node--start' : '',
+                  role === 'end' ? 'stitch-node--end' : '',
+                ]
+                  .filter(Boolean)
+                  .join(' ')}
                 transform={`translate(${stitch.x} ${stitch.y})`}
                 onClick={() => toggleSelect(stitch.id)}
                 role="button"
                 tabIndex={0}
                 aria-pressed={selected}
-                aria-label={`${stitchAbbr(stitch.kind)} ${stitch.label}`}
+                aria-label={`${stitchAbbr(stitch.kind)} ${stitch.label}${
+                  role ? `, ${role}` : ''
+                }`}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault()
@@ -255,7 +328,7 @@ export function StitchBuilder({ value, onChange }: StitchBuilderProps) {
                   {item?.symbol ?? '·'}
                 </text>
                 <text className="stitch-node__label" textAnchor="middle" dy="14">
-                  {stitch.label}
+                  {role === 'start' ? 'S' : role === 'end' ? 'E' : stitch.label}
                 </text>
               </g>
             )
