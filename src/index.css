@@ -1,0 +1,107 @@
+:root {
+  --bg: #dff2fc;
+  --ink: #1f3542;
+  --ink-soft: #2a4a5c;
+  --ink-muted: #4a6675;
+  --accent: #5b8fa8;
+  --accent-deep: #3d6f88;
+  --font-display: 'Clash Display', 'Segoe UI', sans-serif;
+  --font-body: 'Satoshi', 'Segoe UI', sans-serif;
+  color: var(--ink);
+  background: var(--bg);
+  font-family: var(--font-body);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  line-height: 1.5;
+  font-weight: 400;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100svh;
+  background: var(--bg);
+}
+
+#root {
+  min-height: 100svh;
+}
+
+h1,
+h2,
+h3,
+p {
+  overflow-wrap: pretty;
+}
+
+img {
+  max-width: 100%;
+  display: block;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  min-height: 2.75rem;
+  padding: 0.65rem 1.25rem;
+  border-radius: 10px;
+  border: 1.5px solid transparent;
+  font-family: var(--font-body);
+  font-size: 0.98rem;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    transform 280ms ease,
+    background-color 280ms ease,
+    border-color 280ms ease,
+    color 280ms ease;
+}
+
+.btn:hover {
+  transform: translateY(-2px);
+}
+
+.btn--primary {
+  background: var(--ink);
+  color: #f4fbfe;
+}
+
+.btn--primary:hover {
+  background: var(--ink-soft);
+}
+
+.btn--ghost {
+  background: color-mix(in srgb, white 55%, transparent);
+  border-color: color-mix(in srgb, var(--ink) 18%, transparent);
+  color: var(--ink-soft);
+}
+
+.btn--ghost:hover {
+  background: color-mix(in srgb, white 80%, transparent);
+  border-color: color-mix(in srgb, var(--ink) 28%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}

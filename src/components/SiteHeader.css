@@ -1,0 +1,44 @@
+.site-header {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding: 1.35rem clamp(1.25rem, 4vw, 3rem);
+  pointer-events: none;
+}
+
+.site-header a {
+  pointer-events: auto;
+}
+
+.site-header__brand {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.05rem;
+  letter-spacing: 0.02em;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.site-header__nav {
+  display: flex;
+  gap: 1.25rem;
+}
+
+.site-header__link {
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--ink-soft);
+  text-decoration: none;
+  transition: color 280ms ease;
+}
+
+.site-header__link:hover,
+.site-header__link.active {
+  color: var(--ink);
+}
