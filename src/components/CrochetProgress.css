@@ -1,118 +1,118 @@
 .crochet-progress {
   display: grid;
-  gap: 1.25rem;
+  gap: 1rem;
 }
 
 .crochet-progress__header {
   display: flex;
   flex-wrap: wrap;
   justify-content: space-between;
-  gap: 1rem 1.5rem;
+  gap: 1rem;
   align-items: end;
+  padding-bottom: 0.85rem;
+  border-bottom: 2px solid var(--line);
 }
 
 .crochet-progress__header h2 {
-  margin: 0 0 0.35rem;
+  margin: 0 0 0.25rem;
 }
 
 .crochet-progress__header p {
   margin: 0;
   color: var(--ink-muted);
-  line-height: 1.45;
   max-width: 34ch;
+  font-size: 0.9rem;
+}
+
+.crochet-progress__header a {
+  color: var(--accent);
+  border-bottom: none;
+  text-decoration: underline;
 }
 
 .crochet-progress__stats {
   display: grid;
-  gap: 0.45rem;
-  min-width: min(100%, 12rem);
+  gap: 0.35rem;
+  min-width: min(100%, 11rem);
 }
 
 .crochet-progress__stats > p {
   margin: 0;
-  font-weight: 600;
-  color: var(--ink-soft);
-  font-size: 0.95rem;
+  font-weight: 500;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
 }
 
 .crochet-progress__bar {
-  height: 0.55rem;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--ink) 10%, #dff2fc);
+  height: 0.5rem;
+  border: 2px solid var(--line);
+  background: var(--panel);
   overflow: hidden;
 }
 
 .crochet-progress__bar span {
   display: block;
   height: 100%;
-  background: var(--accent-deep);
-  border-radius: inherit;
-  transition: width 280ms ease;
+  background: var(--accent);
 }
 
 .crochet-progress__rows {
   display: grid;
-  gap: 0.9rem;
+  gap: 0.65rem;
 }
 
 .crochet-row {
-  padding: 1rem 1.05rem 1.1rem;
-  border-radius: 12px;
-  border: 1px solid color-mix(in srgb, var(--accent) 24%, transparent);
-  background: color-mix(in srgb, white 72%, #dff2fc);
-  transition:
-    opacity 280ms ease,
-    border-color 280ms ease,
-    box-shadow 280ms ease;
+  padding: 0.9rem;
+  border: 2px solid var(--line);
+  background: var(--panel);
 }
 
 .crochet-row--active {
-  border-color: var(--accent-deep);
-  box-shadow: 0 10px 28px rgba(42, 74, 92, 0.08);
-  background: color-mix(in srgb, white 88%, #cfe8f6);
+  background: var(--bg-3);
 }
 
 .crochet-row--done {
-  opacity: 0.72;
+  opacity: 0.55;
 }
 
 .crochet-row--upcoming {
-  opacity: 0.55;
+  opacity: 0.7;
 }
 
 .crochet-row__head {
   display: flex;
   justify-content: space-between;
-  gap: 0.75rem;
+  gap: 0.65rem;
   align-items: start;
-  margin-bottom: 0.75rem;
+  margin-bottom: 0.65rem;
 }
 
 .crochet-row__label {
   margin: 0;
   font-family: var(--font-display);
-  font-weight: 600;
-  font-size: 1.05rem;
-  color: var(--ink);
+  font-weight: 700;
+  font-size: 1rem;
 }
 
 .crochet-row__count {
-  margin: 0.15rem 0 0;
-  font-size: 0.88rem;
+  margin: 0.1rem 0 0;
+  font-size: 0.8rem;
   color: var(--ink-muted);
 }
 
 .crochet-row__toggle-all {
   border: 0;
   background: transparent;
-  color: var(--accent-deep);
+  color: var(--accent-2);
   font: inherit;
-  font-weight: 600;
-  font-size: 0.88rem;
+  font-weight: 500;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
   cursor: pointer;
-  padding: 0.2rem 0;
+  padding: 0;
   text-decoration: underline;
-  text-underline-offset: 0.15em;
 }
 
 .crochet-row__stitches {
@@ -120,26 +120,22 @@
   margin: 0;
   padding: 0;
   display: grid;
-  gap: 0.4rem;
+  gap: 0.3rem;
 }
 
 .crochet-stitch {
   display: grid;
   grid-template-columns: auto 1fr;
-  gap: 0.7rem;
+  gap: 0.6rem;
   align-items: start;
-  padding: 0.55rem 0.65rem;
-  border-radius: 9px;
+  padding: 0.45rem 0.5rem;
   cursor: pointer;
-  border: 1px solid transparent;
-  transition:
-    background-color 220ms ease,
-    border-color 220ms ease;
+  border: 2px solid transparent;
 }
 
 .crochet-stitch:hover {
-  background: color-mix(in srgb, white 70%, #dff2fc);
-  border-color: color-mix(in srgb, var(--accent) 22%, transparent);
+  border-color: var(--line);
+  background: var(--bg);
 }
 
 .crochet-stitch input {
@@ -149,68 +145,59 @@
 }
 
 .crochet-stitch__mark {
-  width: 1.15rem;
-  height: 1.15rem;
+  width: 1rem;
+  height: 1rem;
   margin-top: 0.15rem;
-  border-radius: 4px;
-  border: 1.75px solid color-mix(in srgb, var(--ink) 28%, transparent);
-  background: white;
+  border: 2px solid var(--line);
+  background: var(--panel);
   position: relative;
-  flex-shrink: 0;
 }
 
 .crochet-stitch input:focus-visible + .crochet-stitch__mark {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
+  outline: 2px solid var(--accent-2);
+  outline-offset: 1px;
 }
 
 .crochet-stitch--done .crochet-stitch__mark {
-  background: var(--accent-deep);
-  border-color: var(--accent-deep);
+  background: var(--accent);
+  border-color: var(--ink);
 }
 
 .crochet-stitch--done .crochet-stitch__mark::after {
   content: '';
   position: absolute;
-  left: 0.28rem;
-  top: 0.08rem;
-  width: 0.28rem;
-  height: 0.55rem;
-  border: solid white;
+  left: 0.2rem;
+  top: 0;
+  width: 0.25rem;
+  height: 0.5rem;
+  border: solid #fff;
   border-width: 0 2px 2px 0;
   transform: rotate(40deg);
 }
 
 .crochet-stitch__body {
   display: grid;
-  gap: 0.1rem;
+  gap: 0.05rem;
 }
 
 .crochet-stitch__body strong {
-  color: var(--ink);
-  font-size: 0.98rem;
+  font-size: 0.92rem;
 }
 
 .crochet-stitch__body em {
   font-style: normal;
   color: var(--ink-muted);
-  font-size: 0.88rem;
+  font-size: 0.8rem;
 }
 
 .crochet-stitch__body small {
-  color: var(--ink-soft);
-  font-size: 0.8rem;
+  color: var(--ink-muted);
+  font-size: 0.75rem;
 }
 
 .crochet-stitch--done .crochet-stitch__body strong,
 .crochet-stitch--done .crochet-stitch__body em,
 .crochet-stitch--done .crochet-stitch__body small {
   text-decoration: line-through;
-  opacity: 0.75;
-}
-
-@media (max-width: 640px) {
-  .crochet-progress__header {
-    align-items: start;
-  }
+  opacity: 0.7;
 }

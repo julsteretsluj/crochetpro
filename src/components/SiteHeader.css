@@ -1,44 +1,45 @@
 .site-header {
-  position: absolute;
+  position: fixed;
   top: 0;
   left: 0;
   right: 0;
-  z-index: 10;
+  z-index: 20;
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
-  gap: 1.5rem;
-  padding: 1.35rem clamp(1.25rem, 4vw, 3rem);
-  pointer-events: none;
-}
-
-.site-header a {
-  pointer-events: auto;
+  gap: 1rem;
+  padding: 0.75rem clamp(1rem, 3vw, 1.5rem);
+  background: var(--bg);
+  border-bottom: 2px solid var(--line);
 }
 
 .site-header__brand {
   font-family: var(--font-display);
-  font-weight: 600;
+  font-weight: 700;
   font-size: 1.05rem;
-  letter-spacing: 0.02em;
+  letter-spacing: -0.03em;
   color: var(--ink);
   text-decoration: none;
 }
 
 .site-header__nav {
   display: flex;
-  gap: 1.25rem;
+  flex-wrap: wrap;
+  gap: 0.85rem 1.1rem;
+  justify-content: flex-end;
 }
 
 .site-header__link {
-  font-size: 0.95rem;
+  font-size: 0.82rem;
   font-weight: 500;
-  color: var(--ink-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--ink);
   text-decoration: none;
-  transition: color 280ms ease;
+  border-bottom: 2px solid transparent;
 }
 
 .site-header__link:hover,
 .site-header__link.active {
-  color: var(--ink);
+  border-bottom-color: var(--accent);
 }

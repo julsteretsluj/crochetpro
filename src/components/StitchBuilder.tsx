@@ -21,9 +21,18 @@ type StitchBuilderProps = {
 }
 
 export function StitchBuilder({ value, onChange }: StitchBuilderProps) {
-  const [kind, setKind] = useState<StitchKind>('sc')
+  const [kind, setKind] = useState<StitchKind>('slknot')
   const [count, setCount] = useState(1)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
+
+  const starters = useMemo(
+    () => STITCH_PALETTE.filter((item) => item.starter),
+    [],
+  )
+  const stitches = useMemo(
+    () => STITCH_PALETTE.filter((item) => !item.starter),
+    [],
+  )
 
   const bounds = useMemo(() => {
     if (value.stitches.length === 0) {
@@ -42,8 +51,15 @@ export function StitchBuilder({ value, onChange }: StitchBuilderProps) {
     [value.stitches],
   )
 
-  const preview = describePlacement(kind, count, selectedIds.length)
+  const placeCount = kind === 'slknot' ? 1 : count
+  const preview = describePlacement(kind, placeCount, selectedIds.length)
   const liveInstructions = graphToInstructions(value)
+  const canvasEmpty = value.stitches.length === 0
+
+  function selectKind(next: StitchKind) {
+    setKind(next)
+    if (next === 'slknot') setCount(1)
+  }
 
   function toggleSelect(id: string) {
     setSelectedIds((current) =>
@@ -54,13 +70,15 @@ export function StitchBuilder({ value, onChange }: StitchBuilderProps) {
   }
 
   function handlePlace() {
-    const next = placeStitches(value, kind, count, selectedIds)
+    const next = placeStitches(value, kind, placeCount, selectedIds)
     onChange(next)
-    // keep selection on targets so you can stack more into them,
-    // unless foundation placement with no selection — select the new run
     if (selectedIds.length === 0) {
       const added = next.stitches.slice(value.stitches.length)
       setSelectedIds(added.map((s) => s.id))
+    }
+    if (kind === 'slknot' || kind === 'mr') {
+      setKind('sc')
+      setCount(1)
     }
   }
 
@@ -73,6 +91,31 @@ export function StitchBuilder({ value, onChange }: StitchBuilderProps) {
   function handleClear() {
     onChange(emptyStitchGraph())
     setSelectedIds([])
+    setKind('slknot')
+    setCount(1)
+  }
+
+  function renderChip(item: (typeof STITCH_PALETTE)[number]) {
+    return (
+      <button
+        key={item.kind}
+        type="button"
+        role="option"
+        aria-selected={kind === item.kind}
+        className={
+          kind === item.kind
+            ? 'stitch-chip stitch-chip--active'
+            : 'stitch-chip'
+        }
+        onClick={() => selectKind(item.kind)}
+      >
+        <span className="stitch-chip__symbol" aria-hidden="true">
+          {item.symbol}
+        </span>
+        <span className="stitch-chip__abbr">{item.abbr}</span>
+        <span className="stitch-chip__name">{item.name}</span>
+      </button>
+    )
   }
 
   return (
@@ -80,32 +123,31 @@ export function StitchBuilder({ value, onChange }: StitchBuilderProps) {
       <div className="stitch-builder__intro">
         <h2>Build with stitches</h2>
         <p>
-          Click a stitch type, set how many, select stitches on the canvas, then
-          place — new stitches connect to your selection.
+          Start with a slip knot, magic ring, or chain. Then place stitches and
+          connect them to your selection.
         </p>
       </div>
 
-      <div className="stitch-builder__palette" role="listbox" aria-label="Stitch types">
-        {STITCH_PALETTE.map((item) => (
-          <button
-            key={item.kind}
-            type="button"
-            role="option"
-            aria-selected={kind === item.kind}
-            className={
-              kind === item.kind
-                ? 'stitch-chip stitch-chip--active'
-                : 'stitch-chip'
-            }
-            onClick={() => setKind(item.kind)}
-          >
-            <span className="stitch-chip__symbol" aria-hidden="true">
-              {item.symbol}
-            </span>
-            <span className="stitch-chip__abbr">{item.abbr}</span>
-            <span className="stitch-chip__name">{item.name}</span>
-          </button>
-        ))}
+      <div className="stitch-builder__group">
+        <p className="stitch-builder__group-label">Start with</p>
+        <div
+          className="stitch-builder__palette"
+          role="listbox"
+          aria-label="Starting options"
+        >
+          {starters.map(renderChip)}
+        </div>
+      </div>
+
+      <div className="stitch-builder__group">
+        <p className="stitch-builder__group-label">Stitches</p>
+        <div
+          className="stitch-builder__palette"
+          role="listbox"
+          aria-label="Stitch types"
+        >
+          {stitches.map(renderChip)}
+        </div>
       </div>
 
       <div className="stitch-builder__controls">
@@ -115,7 +157,8 @@ export function StitchBuilder({ value, onChange }: StitchBuilderProps) {
             type="number"
             min={1}
             max={48}
-            value={count}
+            value={placeCount}
+            disabled={kind === 'slknot'}
             onChange={(e) => setCount(Number(e.target.value) || 1)}
           />
         </label>
@@ -124,7 +167,7 @@ export function StitchBuilder({ value, onChange }: StitchBuilderProps) {
 
         <div className="stitch-builder__actions">
           <button type="button" className="btn btn--primary" onClick={handlePlace}>
-            Place {count} {stitchAbbr(kind)}
+            Place {placeCount} {stitchAbbr(kind)}
           </button>
           <button
             type="button"
@@ -146,7 +189,7 @@ export function StitchBuilder({ value, onChange }: StitchBuilderProps) {
             type="button"
             className="btn btn--ghost"
             onClick={handleClear}
-            disabled={value.stitches.length === 0}
+            disabled={canvasEmpty}
           >
             Reset canvas
           </button>
@@ -154,10 +197,9 @@ export function StitchBuilder({ value, onChange }: StitchBuilderProps) {
       </div>
 
       <div className="stitch-builder__canvas-wrap">
-        {value.stitches.length === 0 ? (
+        {canvasEmpty ? (
           <p className="stitch-builder__empty">
-            No stitches yet — pick a type and place a foundation chain or magic
-            ring to begin.
+            Empty canvas — start with a slip knot, magic ring, or chain.
           </p>
         ) : null}
         <svg

@@ -1,9 +1,7 @@
 .stitch-diagram {
   overflow: auto;
-  border-radius: 12px;
-  border: 1px solid color-mix(in srgb, var(--accent) 28%, transparent);
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.55), rgba(223, 242, 252, 0.4));
+  border: 2px solid var(--line);
+  background: var(--panel);
 }
 
 .stitch-diagram svg {
@@ -13,26 +11,26 @@
 }
 
 .stitch-diagram__link {
-  stroke: color-mix(in srgb, var(--accent-deep) 55%, transparent);
+  stroke: var(--ink);
   stroke-width: 2;
-  stroke-linecap: round;
+  stroke-linecap: square;
 }
 
 .stitch-diagram__disk {
-  fill: color-mix(in srgb, white 88%, #dff2fc);
-  stroke: color-mix(in srgb, var(--ink) 22%, transparent);
-  stroke-width: 1.75;
+  fill: var(--bg);
+  stroke: var(--ink);
+  stroke-width: 2;
 }
 
 .stitch-diagram__symbol {
   font-family: var(--font-display);
-  font-size: 13px;
-  font-weight: 600;
-  fill: var(--accent-deep);
+  font-size: 12px;
+  font-weight: 700;
+  fill: var(--ink);
 }
 
 .stitch-diagram__label {
   font-size: 10px;
   font-weight: 700;
-  fill: var(--ink-soft);
+  fill: var(--ink);
 }

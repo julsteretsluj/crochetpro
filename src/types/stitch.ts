@@ -1,11 +1,12 @@
 export type StitchKind =
+  | 'slknot'
+  | 'mr'
   | 'ch'
   | 'slst'
   | 'sc'
   | 'hdc'
   | 'dc'
   | 'tr'
-  | 'mr'
 
 export type StitchNode = {
   id: string
@@ -27,17 +28,24 @@ export type StitchPaletteItem = {
   abbr: string
   name: string
   symbol: string
+  /** Foundation starts — shown first when the canvas is empty */
+  starter?: boolean
 }
 
 export const STITCH_PALETTE: StitchPaletteItem[] = [
-  { kind: 'mr', abbr: 'mr', name: 'Magic ring', symbol: '○' },
-  { kind: 'ch', abbr: 'ch', name: 'Chain', symbol: '⚬' },
+  { kind: 'slknot', abbr: 'sl knot', name: 'Slip knot', symbol: '◉', starter: true },
+  { kind: 'mr', abbr: 'mr', name: 'Magic ring', symbol: '○', starter: true },
+  { kind: 'ch', abbr: 'ch', name: 'Chain', symbol: '⚬', starter: true },
   { kind: 'slst', abbr: 'sl st', name: 'Slip stitch', symbol: '·' },
   { kind: 'sc', abbr: 'sc', name: 'Single crochet', symbol: '×' },
   { kind: 'hdc', abbr: 'hdc', name: 'Half double', symbol: 'T' },
   { kind: 'dc', abbr: 'dc', name: 'Double crochet', symbol: '✝' },
   { kind: 'tr', abbr: 'tr', name: 'Treble', symbol: '╪' },
 ]
+
+export const STARTER_KINDS: StitchKind[] = STITCH_PALETTE.filter(
+  (item) => item.starter,
+).map((item) => item.kind)
 
 export function emptyStitchGraph(): StitchGraph {
   return { stitches: [], nextLabel: 1 }

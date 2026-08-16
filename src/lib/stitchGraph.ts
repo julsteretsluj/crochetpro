@@ -65,7 +65,9 @@ export function placeStitches(
   count: number,
   selectedIds: string[],
 ): StitchGraph {
-  const safeCount = Math.max(1, Math.min(48, Math.floor(count)))
+  // Slip knot is a single starting loop
+  const requested = kind === 'slknot' ? 1 : count
+  const safeCount = Math.max(1, Math.min(48, Math.floor(requested)))
   const targets = layoutTargets(graph, selectedIds)
   const last = graph.stitches[graph.stitches.length - 1] ?? null
   const connectionPlan = resolveConnections(
@@ -137,8 +139,24 @@ export function describePlacement(
   selectedCount: number,
 ): string {
   const abbr = stitchAbbr(kind)
+
+  if (kind === 'slknot') {
+    if (count === 1 && selectedCount === 0) {
+      return 'Place a slip knot to start'
+    }
+    return `Place ${count} slip knot${count === 1 ? '' : 's'}`
+  }
+
+  if (kind === 'mr' && selectedCount === 0) {
+    return count === 1
+      ? 'Place a magic ring to start'
+      : `Place ${count} magic rings`
+  }
+
   if (selectedCount === 0) {
-    return `Place ${count} ${abbr} as a new sequence`
+    return kind === 'ch'
+      ? `Place ${count} ${abbr} as a starting chain`
+      : `Place ${count} ${abbr} as a new sequence`
   }
   if (selectedCount === 1) {
     return `Place ${count} ${abbr} into the selected stitch`
@@ -217,6 +235,7 @@ function connectionSignature(
 export function graphToAbbreviationLines(graph: StitchGraph): string[] {
   const used = new Set(graph.stitches.map((s) => s.kind))
   const dictionary: Record<StitchKind, string> = {
+    slknot: 'slip knot',
     mr: 'magic ring',
     ch: 'chain',
     slst: 'slip stitch',
